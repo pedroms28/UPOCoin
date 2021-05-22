@@ -1,3 +1,5 @@
+#Librerias
+library(randomcoloR)
 #Lista de paquetes necesarios
 packages = c("tidyverse", "shiny", "data.table", "shinydashboard")
 
@@ -84,8 +86,19 @@ server <- function(input, output) {
     df <-
       coins[grep(paste(input$coins, collapse = "|"), coins$Name), ]
     #Eje x -> fecha, eje y -> seleccionado con el input select
-    ggplot(data = df, aes(x = Date, y = df[[input$column]], group = Name)) +
-      geom_line() + labs(y = input$column)
+    grafi <- ggplot(data = df, aes(x = Date, y = df[[input$column]], group = Name))
+    carda = "Cardano"
+    bit = "Bitcoin"
+    print(filter(.data = coins, Name == "Cardano"))
+    if(carda %in% input$coins){
+      grafi <- grafi + geom_line(data = filter(.data = coins, Name == "Cardano"),color = "green") + labs(y = input$column)
+    }
+    
+    if(bit %in% input$coins){
+      grafi <- grafi +  geom_line(data = filter(.data = coins, Name == bit),color = "red") + labs(y = input$column)
+    }
+    
+    grafi
   })
 }
 
