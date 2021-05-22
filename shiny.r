@@ -1,5 +1,3 @@
-#Librerias
-library(randomcoloR)
 #Lista de paquetes necesarios
 packages = c("tidyverse", "shiny", "data.table", "shinydashboard")
 
@@ -81,25 +79,22 @@ ui <- dashboardPage(
 )
 
 server <- function(input, output) {
-  output$plot1 <- renderPlot({
-    #Filtramos el dataset por nombre de criptomoneda (atributo Name) seleccionado/s en el checkbox
-    df <-
-      coins[grep(paste(input$coins, collapse = "|"), coins$Name), ]
-    #Eje x -> fecha, eje y -> seleccionado con el input select
-    grafi <- ggplot(data = df, aes(x = Date, y = df[[input$column]], group = Name))
-    carda = "Cardano"
-    bit = "Bitcoin"
-    print(filter(.data = coins, Name == "Cardano"))
-    if(carda %in% input$coins){
-      grafi <- grafi + geom_line(data = filter(.data = coins, Name == "Cardano"),color = "green") + labs(y = input$column)
-    }
-    
-    if(bit %in% input$coins){
-      grafi <- grafi +  geom_line(data = filter(.data = coins, Name == bit),color = "red") + labs(y = input$column)
-    }
-    
-    grafi
-  })
-}
+    output$plot1 <-
+      renderPlot({
+        #Filtramos el dataset por nombre de criptomoneda (atributo Name) seleccionado/s en el checkbox
+        df <-
+          coins[grepl(paste(paste(paste0(
+            "^", input$coins
+          ), "$", sep = ""), collapse = "|"), coins$Name), ]
+        #Eje x -> fecha, eje y -> seleccionado con el input select
+        ggplot(data = df, aes(
+          x = Date,
+          y = df[[input$column]],
+          group = Name,
+          color = Name
+        )) +
+          geom_line() + labs(y = input$column)
+      })
+  }
 
 shinyApp(ui, server)
