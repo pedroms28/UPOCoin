@@ -40,6 +40,11 @@ ui <- dashboardPage(
       "Predicciones",
       tabName = "predicts",
       icon = icon("search-dollar")
+    ),
+    menuItem(
+      "Agrupamientos",
+      tabName = "groups",
+      icon = icon("search-dollar")
     )
   )),
   
@@ -120,11 +125,59 @@ ui <- dashboardPage(
                 #Botón para lanzar la predicción:
                 actionButton("executePredict", "Predecir")
               )
+            )),
+                #Tercera pestana
+          tabItem(tabName = "groups",
+            fluidRow(
+              h2("Agrupamientos"),
+              box(
+                width = 9,
+                #Gráfica
+                plotOutput("plotCluster"),#plotPredict
+                htmlOutput("cluster"), #prediccion
+                verbatimTextOutput("summaryCluster", placeholder = FALSE)
+              ),
+              
+              box(
+                width = 3,
+                title = "Criptomonedas",
+                #Slider con el numero de grupos que se quiera crear:
+                sliderInput(
+                  "sliderCluster", #sliderPredict
+                  "1.introduce el numero de grupos que quieras crear",
+                  min = 2,
+                  max = 15,
+                  value = 4
+                ),
+                #Slider con el numero de dias para la agrupacion:
+                sliderInput(
+                  "sliderClusterDays",
+                  "2.introduce el numero de dias para la predicción",
+                  min = 5,
+                  max = 90,
+                  value = 14
+                ),
+                #Selector de columnas/atributos:
+                selectInput(
+                  inputId = "columnCluster",#columnPredict
+                  label = "Selecciona un atributo:",
+                  #Solo seleccionamos las columnas High, Low, Open, Close, Volume y Marketcap
+                  choices = names(coins)[4:9],
+                  #Por defecto seleccionada la columna Close
+                  selected = names(coins)[7]
+                ),
+                #Botón para lanzar la busqueda:
+                actionButton("executeCluster", "Buscar"),
+                textInput("texto","3. Visualiza un cluster",placeholder = "Cluster ID"),
+                actionButton("visual","Visualizar")
+              )
             ))
   ))
 )
 
 server <- function(input, output) {
+  clusters <- reactiveValues(data=NULL)
+  coins_list <- reactiveValues(data=NULL)
   output$plot1 <-
     renderPlot({
       #Filtramos el dataset por nombre de criptomoneda (atributo Name) seleccionado/s en el checkbox
@@ -190,6 +243,48 @@ server <- function(input, output) {
           geom_line(aes(y = upr), color = "red", linetype = "dashed")
       })
   })
+  
+  #Tercera
+  observeEvent(input$executeCluster, {
+    
+    coin_cluster <- coins
+
+    #coin_cluster$Date <-
+      #as.numeric(as.Date(coin_cluster$Date))
+    
+    coin_cluster =  split(coin_cluster, coin_cluster$Name)
+    
+    coins_list$data <- data.frame()  
+    
+    for(i in 1:length(coin_cluster)){
+      coin_cluster[[i]] <- tail(coin_cluster[[i]], input$sliderClusterDays)
+      #name <- unique(coin_cluster[[i]]$Name)
+      coin_cluster[[i]] <- subset( coin_cluster[[i]], select = c("Date",input$columnCluster) )
+      coin_cluster[[i]] <- transpose(make.names = "Date", coin_cluster[[i]])
+      coins_list$data<-rbind(coins_list$data,coin_cluster[[i]])
+      #rownames(coins_list[i]) <- name
+    }
+    
+    clusters$data <- kmeans(coins_list$data,input$sliderCluster,nstart = 25)
+
+
+  })
+  observeEvent(input$visual, {
+    #data.cluster.x = coins_list[clusters$data$cluster == input$texto,]
+    output$summaryCluster = renderPrint({summary(coins_list$data[clusters$data$cluster == input$texto,])})
+    
+    output$plotCluster <-
+      renderPlot({
+        ggplot(data = coins_list$data, aes(
+          x = "Days",
+          y = row.names(coins_list$data),
+          group = 23
+        )) +
+          geom_line() + labs(y =input$columnCluster)
+      })
+    
+  })
+
   
 }
 
