@@ -49,6 +49,11 @@ ui <- dashboardPage(
       "Agrupamientos",
       tabName = "groups",
       icon = icon("object-group")
+    ),
+    menuItem(
+      "Agrupamientos diferencia",
+      tabName = "groupsVariance",
+      icon = icon("object-group")
     )
   )),
   
@@ -186,13 +191,64 @@ ui <- dashboardPage(
                 textInput("texto", "3. Visualiza un cluster", placeholder = "Cluster ID"),
                 actionButton("visual", "Visualizar")
               )
+            )),
+    #Cuarta pestana
+    tabItem(tabName = "groupsVariance",
+            fluidRow(
+              h2("Agrupamientos por diferencia"),
+              box(
+                width = 9,
+                #Gráfica
+                plotOutput("plotCluster2"),
+                #plotPredict
+                htmlOutput("cluster2"),
+                #prediccion
+                verbatimTextOutput("summaryCluster2", placeholder = FALSE)
+              ),
+              
+              box(
+                width = 3,
+                title = "Criptomonedas",
+                #Slider con el numero de grupos que se quiera crear:
+                sliderInput(
+                  "sliderCluster2",
+                  "1.introduce el numero de grupos que quieras crear",
+                  min = 2,
+                  max = 15,
+                  value = 4
+                ),
+                #Slider con el numero de dias para la agrupacion:
+                sliderInput(
+                  "sliderClusterDays2",
+                  "2.introduce el numero de dias para la predicción",
+                  min = 5,
+                  max = 90,
+                  value = 14
+                ),
+                #Selector de columnas/atributos:
+                selectInput(
+                  inputId = "columnCluster2",
+                  #columnPredict
+                  label = "Selecciona un atributo:",
+                  #Solo seleccionamos las columnas High, Low, Open, Close, Volume y Marketcap
+                  choices = names(coins)[4:9],
+                  #Por defecto seleccionada la columna Close
+                  selected = names(coins)[7]
+                ),
+                #Botón para lanzar la busqueda:
+                actionButton("executeCluster2", "Buscar"),
+                textInput("texto2", "3. Visualiza un cluster", placeholder = "Cluster ID"),
+                actionButton("visual2", "Visualizar")
+              )
             ))
   ))
 )
 
 server <- function(input, output) {
   clusters <- reactiveValues(data = NULL)
+  clusters2 <- reactiveValues(data = NULL)
   coins_list <- reactiveValues(data = NULL)
+  coins_list2 <- reactiveValues(data = NULL)
   sliderLearner <- reactiveValues(data = NULL)
   sliderPredictor <- reactiveValues(data = NULL)
   columnPredict <- reactiveValues(data = NULL)
@@ -322,6 +378,7 @@ server <- function(input, output) {
       #name <- unique(coin_cluster[[i]]$Name)
       coin_cluster[[i]] <-
         subset(coin_cluster[[i]], select = c("Date", input$columnCluster))
+      coin_cluster[[i]]$Date <- as.Date(coin_cluster[[i]]$Date)
       coin_cluster[[i]] <-
         transpose(make.names = "Date", coin_cluster[[i]])
       coins_list$data <- rbind(coins_list$data, coin_cluster[[i]])
@@ -351,6 +408,68 @@ server <- function(input, output) {
         c$Group <- NULL
         d <- melt(data = c, id.vars = "Name")
         #fviz_cluster(clusters$data, coins_list$data)
+        ggplot(data = d, aes(
+          x = variable,
+          y = value,
+          group = Name,
+          color = Name
+        )) +
+          geom_line() + labs(y = input$columnCluster, x = "Date")
+      })
+    
+  })
+  
+  #Cuarta
+  observeEvent(input$executeCluster2, {
+    coin_cluster <- coins
+    
+    #coin_cluster$Date <-
+    #as.numeric(as.Date(coin_cluster$Date))
+    
+    coin_cluster =  split(coin_cluster, coin_cluster$Name)
+    
+    coins_list2$data <- data.frame()
+    
+    for (i in 1:length(coin_cluster)) {
+      coin_cluster[[i]] <- subset(coin_cluster[[i]], select = c("Date", input$columnCluster2))
+      
+      coin_cluster[[i]]$copia <- lag(coin_cluster[[i]][[input$columnCluster2]])
+      
+      coin_cluster[[i]] <- tail(coin_cluster[[i]], input$sliderClusterDays2)
+      
+      coin_cluster[[i]][[input$columnCluster2]] <- coin_cluster[[i]][[input$columnCluster2]] - coin_cluster[[i]]$copia
+      
+      coin_cluster[[i]]$copia <- NULL
+      
+      coin_cluster[[i]]$Date <- as.Date(coin_cluster[[i]]$Date)
+      
+      coin_cluster[[i]] <- transpose(make.names = "Date", coin_cluster[[i]])
+      
+      coins_list2$data <- rbind(coins_list2$data, coin_cluster[[i]])
+    }
+    
+    coins_list2$data <- scale(coins_list2$data)
+    clusters2$data <-
+      kmeans(coins_list2$data, input$sliderCluster2, nstart = 25)
+    
+    
+  })
+  
+  observeEvent(input$visual2, {
+    
+    output$summaryCluster2 = renderPrint({
+      summary(coins_list2$data[clusters2$data$cluster == input$texto2,])
+    })
+    
+    output$plotCluster2 <-
+      
+      renderPlot({
+        c2 <- as.data.table(coins_list2$data)
+        c2$Name <- names_coins
+        c2$Group <- clusters2$data$cluster
+        c2 <- c2[c2$Group == input$texto2,]
+        c2$Group <- NULL
+        d <- melt(data = c2, id.vars = "Name")
         ggplot(data = d, aes(
           x = variable,
           y = value,
