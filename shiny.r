@@ -3,7 +3,8 @@ packages = c("tidyverse",
              "shiny",
              "data.table",
              "shinydashboard",
-             "zoo")
+             "zoo",
+             "corrplot")
 
 #Función que instala los paquetes si no están instalados y los carga
 package.check <- lapply(
@@ -31,45 +32,65 @@ symbols_coins <- as.vector(coins$Symbol[!duplicated(coins$Symbol)])
 #Juntamos los nombres con sus símbolos (Ejemplo: Aave (AAVE))
 symbols_and_names <- str_c(names_coins, " (", symbols_coins, ")")
 
+#Almacenamos las fechas inicio y final de todas las criptos
+coins_dd <- split(coins, coins$Name)
+min_date_in_common <- as.Date("1970-01-01")
+data_with_date_in_common <- coins_dd
+#Convierto el campo Date a tipo Date y calculo fecha en la que todas las criptomonedas están monitorizándose
+for (i in 1:length(coins_dd)) {
+  coins_dd[[i]] <-
+    transform(coins_dd[[i]], Date = as.Date(coins_dd[[i]]$Date))
+  min_date_in_common <-
+    max(c(min(coins_dd[[i]]$Date), min(min_date_in_common)))
+}
+
+for (i in 1:length(data_with_date_in_common)) {
+  data_with_date_in_common[[i]] <-
+    subset(data_with_date_in_common[[i]], Date >= min_date_in_common)
+}
+max_date_in_common <- tail(data_with_date_in_common[[1]]$Date, 1)
+
 #Interfaz gráfica
 ui <- dashboardPage(
   dashboardHeader(title = "UPOCoin"),
-  dashboardSidebar(sidebarMenu(
-    menuItem(
-      "Visualización",
-      tabName = "dashboard",
-      icon = icon("chart-line")
-    ),
-    menuItem(
-      "Predicciones",
-      tabName = "predicts",
-      icon = icon("search-dollar")
-    ),
-    menuItem(
-      "Agrupamientos",
-      tabName = "groups",
-      icon = icon("object-group")
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem(
+        "Visualización",
+        tabName = "dashboard",
+        icon = icon("chart-line")
+      ),
+      menuItem(
+        "Predicciones",
+        tabName = "predicts",
+        icon = icon("search-dollar")
+      ),
+      menuItem(
+        "Agrupamientos",
+        tabName = "groups",
+        icon = icon("object-group")
+      ),
+      menuItem(
+        "Agrupamiento por diferencia",
+        tabName = "groupsVariance",
+        icon = icon("object-group")
+      ),
+      menuItem(
+        "Correlación",
+        tabName = "correlation",
+        icon = icon("people-arrows")
+      )
     )
-  )),
+  ),
   
   dashboardBody(tabItems(
     #Primera pestaña
     tabItem(tabName = "dashboard",
             fluidRow(
-              box(
-                width = 9,
-                #Selector de columnas/atributos:
-                selectInput(
-                  inputId = "column",
-                  label = "Selecciona un atributo:",
-                  #Solo seleccionamos las columnas High, Low, Open, Close, Volume y Marketcap
-                  choices = names(coins)[4:9],
-                  #Por defecto seleccionada la columna Close
-                  selected = names(coins)[7]
-                ),
-                #Gráfica
-                plotOutput("plot1")
-              ),
+              h2("Visualización de datos"),
+              box(width = 9,
+                  #Gráfica
+                  plotOutput("plot1")),
               box(
                 width = 3,
                 title = "Criptomonedas",
@@ -81,6 +102,15 @@ ui <- dashboardPage(
                   choiceNames = symbols_and_names,
                   #Por defecto seleccionada Bitcoin
                   selected = names_coins[3]
+                ),
+                #Selector de columnas/atributos:
+                selectInput(
+                  inputId = "column",
+                  label = "Selecciona un atributo:",
+                  #Solo seleccionamos las columnas High, Low, Open, Close, Volume y Marketcap
+                  choices = names(coins)[4:9],
+                  #Por defecto seleccionada la columna Close
+                  selected = names(coins)[7]
                 )
               )
             )),
@@ -186,16 +216,105 @@ ui <- dashboardPage(
                 textInput("texto", "3. Visualiza un cluster", placeholder = "Cluster ID"),
                 actionButton("visual", "Visualizar")
               )
+            )),
+    #Cuarta pestana
+    tabItem(tabName = "groupsVariance",
+            fluidRow(
+              h2("Agrupamientos por diferencia"),
+              box(
+                width = 9,
+                #Gráfica
+                plotOutput("plotCluster2"),
+                #plotPredict
+                htmlOutput("cluster2"),
+                #prediccion
+                verbatimTextOutput("summaryCluster2", placeholder = FALSE)
+              ),
+              
+              box(
+                width = 3,
+                title = "Criptomonedas",
+                #Slider con el numero de grupos que se quiera crear:
+                sliderInput(
+                  "sliderCluster2",
+                  "1.introduce el numero de grupos que quieras crear",
+                  min = 2,
+                  max = 15,
+                  value = 4
+                ),
+                #Slider con el numero de dias para la agrupacion:
+                sliderInput(
+                  "sliderClusterDays2",
+                  "2.introduce el numero de dias para la predicción",
+                  min = 5,
+                  max = 90,
+                  value = 14
+                ),
+                #Selector de columnas/atributos:
+                selectInput(
+                  inputId = "columnCluster2",
+                  #columnPredict
+                  label = "Selecciona un atributo:",
+                  #Solo seleccionamos las columnas High, Low, Open, Close, Volume y Marketcap
+                  choices = names(coins)[4:9],
+                  #Por defecto seleccionada la columna Close
+                  selected = names(coins)[7]
+                ),
+                #Botón para lanzar la busqueda:
+                actionButton("executeCluster2", "Buscar"),
+                textInput("texto2", "3. Visualiza un cluster", placeholder = "Cluster ID"),
+                actionButton("visual2", "Visualizar")
+              )
+            )),
+    #Quinta pestana
+    tabItem(tabName = "correlation",
+            fluidRow(
+              h2("Correlación"),
+              box(
+                width = 9,
+                #Gráfica
+                plotOutput("plotCorrelation", width = "100%", height = "100%"),
+                HTML(text = "<h3>Interpretacion de los datos</h3><p>El signo nos indica la dirección de la relación:<p><ul><li>un valor <b>positivo</b> indica una <b>relación directa o positiva</b></li><li>un valor <b>negativo</b> indica relación <b>indirecta, inversa o negativa</b></li><li>un valor <b>nulo</b> indica que <b>no existe una tendencia</b> entre ambas variables (puede ocurrir que no exista relación o que la relación sea más compleja que una tendencia).</li></ul><p>Para interpretar qué tan fuerte es la correlación podemos utilizar el criterio de Cohen, quien para valores absolutos indica que valores entre:<p><ul><li> <b>0.1-0.3</b> -> representa un efecto <b>pequeño</b></li><li> <b>0.3-0.5</b> -> representa un efecto <b>medio</b></li><li> <b>≥ 0.5</b> -> representa un efecto <b>grande</b></li></ul>")
+              ),
+              box(
+                width = 3,
+                title = "Opciones",
+                dateRangeInput(
+                  "daterange",
+                  "Fechas para la correlación:",
+                  start  = min_date_in_common,
+                  end    = max_date_in_common,
+                  min    = min_date_in_common,
+                  max    = max_date_in_common,
+                  format = "yyyy-mm-dd",
+                  separator = " - "
+                ),
+                #Selector de columnas/atributos:
+                selectInput(
+                  inputId = "columnCorrelation",
+                  #columnPredict
+                  label = "Selecciona un atributo:",
+                  #Solo seleccionamos las columnas High, Low, Open, Close, Volume y Marketcap
+                  choices = names(coins)[4:9],
+                  #Por defecto seleccionada la columna Close
+                  selected = names(coins)[7]
+                ),
+                #Botón para lanzar la busqueda:
+                actionButton("executeCorrelation", "Ejecutar")
+              )
             ))
   ))
 )
 
 server <- function(input, output) {
   clusters <- reactiveValues(data = NULL)
+  clusters2 <- reactiveValues(data = NULL)
   coins_list <- reactiveValues(data = NULL)
+  coins_list2 <- reactiveValues(data = NULL)
   sliderLearner <- reactiveValues(data = NULL)
   sliderPredictor <- reactiveValues(data = NULL)
   columnPredict <- reactiveValues(data = NULL)
+  dates <- reactiveValues(data = NULL)
   output$plot1 <-
     renderPlot({
       #Filtramos el dataset por nombre de criptomoneda (atributo Name) seleccionado/s en el checkbox
@@ -243,10 +362,6 @@ server <- function(input, output) {
               newdata = nuevo,
               interval = "prediction")
     
-    #mydata <- cbind(coin_selected, prediccion)
-    #mydata <- cbind(coin_selected, prediccion)
-    #mydata$Date <- as.Date(mydata$Date)
-    
     output$prediccion <- renderText({
       string <-
         "<style>
@@ -272,7 +387,7 @@ server <- function(input, output) {
                 "</td></tr>",
                 collapse = NULL)
       }
-      string <- str_c(string, "</table>")
+      string <- str_c(string, "</table><br><br>")
     })
     
     output$summary <- renderPrint({
@@ -298,19 +413,31 @@ server <- function(input, output) {
         
         for (i in 1:sliderPredictor$data) {
           p <-
-            p + annotate(geom = "point", x = nuevo$Date[i], y = prediccion$fit[i], color = "blue")
+            p + annotate(
+              geom = "point",
+              x = nuevo$Date[i],
+              y = prediccion$fit[i],
+              color = "blue"
+            )
         }
         
         p
       })
+    
+    if (columnPredict$data %in% c("Close", "Open", "Low", "High")) {
+      if (prediccion[[1]] > (tail(coin_selected[[columnPredict$data]], 1) * 1.05)) {
+        showNotification("Se recomienda comprar", type = "warning")
+      } else if (prediccion[[1]] < (tail(coin_selected[[columnPredict$data]], 1) *
+                                    0.95)) {
+        showNotification("Se recomienda vender", type = "warning")
+      }
+    }
+    
   })
   
   #Tercera
   observeEvent(input$executeCluster, {
     coin_cluster <- coins
-    
-    #coin_cluster$Date <-
-    #as.numeric(as.Date(coin_cluster$Date))
     
     coin_cluster =  split(coin_cluster, coin_cluster$Name)
     
@@ -319,25 +446,24 @@ server <- function(input, output) {
     for (i in 1:length(coin_cluster)) {
       coin_cluster[[i]] <-
         tail(coin_cluster[[i]], input$sliderClusterDays)
-      #name <- unique(coin_cluster[[i]]$Name)
       coin_cluster[[i]] <-
         subset(coin_cluster[[i]], select = c("Date", input$columnCluster))
+      coin_cluster[[i]]$Date <- as.Date(coin_cluster[[i]]$Date)
       coin_cluster[[i]] <-
         transpose(make.names = "Date", coin_cluster[[i]])
       coins_list$data <- rbind(coins_list$data, coin_cluster[[i]])
-      #rownames(coins_list[i]) <- name
     }
     
     clusters$data <-
       kmeans(coins_list$data, input$sliderCluster, nstart = 25)
-    
+    if (!is.null(clusters$data)) {
+      showNotification("Algoritmo ejecutado.", type = "message")
+    }
     
   })
   observeEvent(input$visual, {
-    #data.cluster.x = coins_list[clusters$data$cluster == input$texto,]
-    #coins_list$data$name <- names_coins
-    #coins_list$data <- coins_list$data[, c()]
     output$summaryCluster = renderPrint({
+      print("Resumen del Cluster: ")
       summary(coins_list$data[clusters$data$cluster == input$texto,])
     })
     
@@ -350,7 +476,6 @@ server <- function(input, output) {
         c <- c[c$Group == input$texto,]
         c$Group <- NULL
         d <- melt(data = c, id.vars = "Name")
-        #fviz_cluster(clusters$data, coins_list$data)
         ggplot(data = d, aes(
           x = variable,
           y = value,
@@ -362,7 +487,98 @@ server <- function(input, output) {
     
   })
   
+  #Cuarta
+  observeEvent(input$executeCluster2, {
+    coin_cluster <- coins
+    
+    coin_cluster =  split(coin_cluster, coin_cluster$Name)
+    
+    coins_list2$data <- data.frame()
+    
+    for (i in 1:length(coin_cluster)) {
+      coin_cluster[[i]] <-
+        subset(coin_cluster[[i]], select = c("Date", input$columnCluster2))
+      
+      coin_cluster[[i]]$copia <-
+        lag(coin_cluster[[i]][[input$columnCluster2]])
+      
+      coin_cluster[[i]] <-
+        tail(coin_cluster[[i]], input$sliderClusterDays2)
+      
+      coin_cluster[[i]][[input$columnCluster2]] <-
+        coin_cluster[[i]][[input$columnCluster2]] - coin_cluster[[i]]$copia
+      
+      coin_cluster[[i]]$copia <- NULL
+      
+      coin_cluster[[i]]$Date <- as.Date(coin_cluster[[i]]$Date)
+      
+      coin_cluster[[i]] <-
+        transpose(make.names = "Date", coin_cluster[[i]])
+      
+      coins_list2$data <- rbind(coins_list2$data, coin_cluster[[i]])
+    }
+    
+    coins_list2$data <- scale(coins_list2$data)
+    clusters2$data <-
+      kmeans(coins_list2$data, input$sliderCluster2, nstart = 25)
+    if (!is.null(clusters2$data)) {
+      showNotification("Algoritmo ejecutado.", type = "message")
+    }
+    
+  })
   
+  observeEvent(input$visual2, {
+    output$summaryCluster2 = renderPrint({
+      print("Resumen del Cluster: ")
+      summary(coins_list2$data[clusters2$data$cluster == input$texto2,])
+    })
+    
+    output$plotCluster2 <-
+      
+      renderPlot({
+        c2 <- as.data.table(coins_list2$data)
+        c2$Name <- names_coins
+        c2$Group <- clusters2$data$cluster
+        c2 <- c2[c2$Group == input$texto2,]
+        c2$Group <- NULL
+        d <- melt(data = c2, id.vars = "Name")
+        ggplot(data = d, aes(
+          x = variable,
+          y = value,
+          group = Name,
+          color = Name
+        )) +
+          geom_line() + labs(y = input$columnCluster, x = "Date")
+      })
+    
+  })
+  
+  #Quinto
+  observeEvent(input$executeCorrelation, {
+    dates$data <- input$daterange
+    temp <- coins
+    temp$Date <- as.Date(temp$Date, format = "%Y-%m-%d")
+    temp <-
+      subset(temp, Date >= dates$data[1] & Date <= dates$data[2])
+    temp <-
+      subset(temp, select = c("Name", input$columnCorrelation))
+    temp <- split(temp, temp$Name)
+    for (i in 1:length(temp)) {
+      temp[i] <- subset(temp[[i]], select = c(input$columnCorrelation))
+    }
+    correlaciones <- cor(as.data.table(temp))
+    
+    output$plotCorrelation <- renderPlot({
+      corrplot.mixed(
+        correlaciones,
+        lower.col = "black",
+        number.cex = .7,
+        tl.pos = 'lt',
+        tl.cex = .6,
+        tl.col = 'blue'
+      )
+    }, height = 600, width = 600)
+  })
 }
 
 shinyApp(ui, server)
