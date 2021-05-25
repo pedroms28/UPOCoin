@@ -93,11 +93,11 @@ ui <- dashboardPage(
                   plotOutput("plot1")),
               box(
                 width = 3,
-                title = "Criptomonedas",
+                title = "Opciones",
                 #Checkbox múltiple para seleccionar la/s criptomoneda/s
                 checkboxGroupInput(
                   inputId = "coins",
-                  label = "Selecciona la/s criptomoneda/s:",
+                  label = "1. Selecciona la/s criptomoneda/s:",
                   choiceValues = names_coins,
                   choiceNames = symbols_and_names,
                   #Por defecto seleccionada Bitcoin
@@ -106,7 +106,7 @@ ui <- dashboardPage(
                 #Selector de columnas/atributos:
                 selectInput(
                   inputId = "column",
-                  label = "Selecciona un atributo:",
+                  label = "2. Selecciona un atributo:",
                   #Solo seleccionamos las columnas High, Low, Open, Close, Volume y Marketcap
                   choices = names(coins)[4:9],
                   #Por defecto seleccionada la columna Close
@@ -129,11 +129,11 @@ ui <- dashboardPage(
               
               box(
                 width = 3,
-                title = "Criptomonedas",
+                title = "Opciones",
                 #Checkbox múltiple para seleccionar la/s criptomoneda/s
                 radioButtons(
                   inputId = "coinsPredict",
-                  label = "Selecciona la/s criptomoneda/s:",
+                  label = "1. Selecciona la/s criptomoneda/s:",
                   choiceValues = names_coins,
                   choiceNames = symbols_and_names,
                   #Por defecto seleccionada Bitcoin
@@ -142,7 +142,7 @@ ui <- dashboardPage(
                 #Selector de columnas/atributos:
                 selectInput(
                   inputId = "columnPredict",
-                  label = "Selecciona un atributo:",
+                  label = "2. Selecciona un atributo:",
                   #Solo seleccionamos las columnas High, Low, Open, Close, Volume y Marketcap
                   choices = names(coins)[4:9],
                   #Por defecto seleccionada la columna Close
@@ -151,7 +151,7 @@ ui <- dashboardPage(
                 #Slider con el numero de días para el aprendizaje:
                 sliderInput(
                   "sliderLearner",
-                  "1.Introduce el número de días para el aprendizaje",
+                  "3. Introduce el número de días para el aprendizaje",
                   min = 5,
                   max = 90,
                   value = 14
@@ -159,7 +159,7 @@ ui <- dashboardPage(
                 #Slider con el numero de dias para la prediccion:
                 sliderInput(
                   "sliderPredictor",
-                  "1.introduce el número de días de predicción",
+                  "4. Introduce el número de días de predicción",
                   min = 1,
                   max = 5,
                   value = 1
@@ -184,11 +184,11 @@ ui <- dashboardPage(
               
               box(
                 width = 3,
-                title = "Criptomonedas",
+                title = "Opciones",
                 #Slider con el numero de grupos que se quiera crear:
                 sliderInput(
                   "sliderCluster",
-                  "1.introduce el numero de grupos que quieras crear",
+                  "1. Introduce el numero de grupos que quieras crear",
                   min = 2,
                   max = 15,
                   value = 4
@@ -196,7 +196,7 @@ ui <- dashboardPage(
                 #Slider con el numero de dias para la agrupacion:
                 sliderInput(
                   "sliderClusterDays",
-                  "2.introduce el numero de dias para la predicción",
+                  "2. Introduce el numero de dias para el agrupamiento",
                   min = 5,
                   max = 90,
                   value = 14
@@ -205,7 +205,7 @@ ui <- dashboardPage(
                 selectInput(
                   inputId = "columnCluster",
                   #columnPredict
-                  label = "Selecciona un atributo:",
+                  label = "3. Selecciona un atributo:",
                   #Solo seleccionamos las columnas High, Low, Open, Close, Volume y Marketcap
                   choices = names(coins)[4:9],
                   #Por defecto seleccionada la columna Close
@@ -213,7 +213,7 @@ ui <- dashboardPage(
                 ),
                 #Botón para lanzar la busqueda:
                 actionButton("executeCluster", "Buscar"),
-                textInput("texto", "3. Visualiza un cluster", placeholder = "Cluster ID"),
+                numericInput("texto", "4. Visualiza un cluster", value = 1, min = 1),
                 actionButton("visual", "Visualizar")
               )
             )),
@@ -233,11 +233,11 @@ ui <- dashboardPage(
               
               box(
                 width = 3,
-                title = "Criptomonedas",
+                title = "Opciones",
                 #Slider con el numero de grupos que se quiera crear:
                 sliderInput(
                   "sliderCluster2",
-                  "1.introduce el numero de grupos que quieras crear",
+                  "1. Introduce el numero de grupos que quieras crear",
                   min = 2,
                   max = 15,
                   value = 4
@@ -245,7 +245,7 @@ ui <- dashboardPage(
                 #Slider con el numero de dias para la agrupacion:
                 sliderInput(
                   "sliderClusterDays2",
-                  "2.introduce el numero de dias para la predicción",
+                  "2. Introduce el numero de dias para el agrupamiento",
                   min = 5,
                   max = 90,
                   value = 14
@@ -254,7 +254,7 @@ ui <- dashboardPage(
                 selectInput(
                   inputId = "columnCluster2",
                   #columnPredict
-                  label = "Selecciona un atributo:",
+                  label = "3. Selecciona un atributo:",
                   #Solo seleccionamos las columnas High, Low, Open, Close, Volume y Marketcap
                   choices = names(coins)[4:9],
                   #Por defecto seleccionada la columna Close
@@ -262,7 +262,7 @@ ui <- dashboardPage(
                 ),
                 #Botón para lanzar la busqueda:
                 actionButton("executeCluster2", "Buscar"),
-                textInput("texto2", "3. Visualiza un cluster", placeholder = "Cluster ID"),
+                numericInput("texto2", "4. Visualiza un cluster", value = 1, min = 1),
                 actionButton("visual2", "Visualizar")
               )
             )),
@@ -281,7 +281,7 @@ ui <- dashboardPage(
                 title = "Opciones",
                 dateRangeInput(
                   "daterange",
-                  "Fechas para la correlación:",
+                  "1. Fechas para la correlación:",
                   start  = min_date_in_common,
                   end    = max_date_in_common,
                   min    = min_date_in_common,
@@ -293,7 +293,7 @@ ui <- dashboardPage(
                 selectInput(
                   inputId = "columnCorrelation",
                   #columnPredict
-                  label = "Selecciona un atributo:",
+                  label = "2. Selecciona un atributo:",
                   #Solo seleccionamos las columnas High, Low, Open, Close, Volume y Marketcap
                   choices = names(coins)[4:9],
                   #Por defecto seleccionada la columna Close
